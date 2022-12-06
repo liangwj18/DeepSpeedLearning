@@ -1,0 +1,12 @@
+[2022-12-06 15:23:45,037] [WARNING] [runner.py:179:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
+Detected CUDA_VISIBLE_DEVICES=4,5,6: setting --include=localhost:4,5,6
+[2022-12-06 15:23:45,155] [INFO] [runner.py:508:main] cmd = /home/liangwj/miniconda3/envs/deepspeed/bin/python3.9 -u -m deepspeed.launcher.launch --world_info=eyJsb2NhbGhvc3QiOiBbNCwgNSwgNl19 --master_addr=127.0.0.1 --master_port=29500 run_glue.py --model_name_or_path bert-base-cased --task_name mrpc --do_train --do_eval --max_seq_length 128 --per_device_train_batch_size 32 --learning_rate 2e-5 --num_train_epochs 3 --overwrite_output_dir yes --output_dir ./output/deepspeed_three/mrpc/
+[2022-12-06 15:23:46,218] [INFO] [launch.py:142:main] WORLD INFO DICT: {'localhost': [4, 5, 6]}
+[2022-12-06 15:23:46,218] [INFO] [launch.py:148:main] nnodes=1, num_local_procs=3, node_rank=0
+[2022-12-06 15:23:46,218] [INFO] [launch.py:161:main] global_rank_mapping=defaultdict(<class 'list'>, {'localhost': [0, 1, 2]})
+[2022-12-06 15:23:46,218] [INFO] [launch.py:162:main] dist_world_size=3
+[2022-12-06 15:23:46,218] [INFO] [launch.py:164:main] Setting CUDA_VISIBLE_DEVICES=4,5,6
+{'train_runtime': 22.314, 'train_samples_per_second': 493.144, 'train_steps_per_second': 5.243, 'train_loss': 0.535761221861228, 'epoch': 3.0}
+[2022-12-06 15:27:12,504] [INFO] [launch.py:350:main] Process 56226 exits successfully.
+[2022-12-06 15:27:13,505] [INFO] [launch.py:350:main] Process 56225 exits successfully.
+[2022-12-06 15:27:13,505] [INFO] [launch.py:350:main] Process 56224 exits successfully.

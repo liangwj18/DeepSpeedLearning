@@ -1,0 +1,5 @@
+epoch = 3.0
+train_loss = 0.535761221861228
+train_runtime = 22.314
+train_samples_per_second = 493.144
+train_steps_per_second = 5.243
