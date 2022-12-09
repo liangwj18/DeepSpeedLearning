@@ -34,7 +34,7 @@ prof = torch.profiler.profile(
         with_stack=True)
 prof.start()
 for step, batch_data in enumerate(train_loader):
-    if step >= (1 + 1 + 3) * 5:
+    if step >= (1 + 1 + 5) * 5:
         break
     train(batch_data)
     prof.step()
