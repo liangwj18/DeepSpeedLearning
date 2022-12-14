@@ -31,11 +31,11 @@ prof = torch.profiler.profile(
         schedule=torch.profiler.schedule(wait=1, warmup=1, active=5),
         on_trace_ready=torch.profiler.tensorboard_trace_handler('./log/resnet18'),
         record_shapes=True,
+        profile_memory=True,
         with_stack=True)
 prof.start()
+
 for step, batch_data in enumerate(train_loader):
-    if step >= (1 + 1 + 5) * 5:
-        break
     train(batch_data)
     prof.step()
 prof.stop()
