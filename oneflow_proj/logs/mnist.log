@@ -1,0 +1,9 @@
+BATCH_SIZE=100
+NUM_EPOCH=5
+
+
+单机单卡：Training complete in: 0:01:18.741640
+单机单卡（BATCH_SIZE=200）：Training complete in: 0:01:11.473018
+单机双卡：Training complete in: 0:00:39.649582
+双机单卡：Training complete in: 0:00:55.373620
+

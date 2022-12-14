@@ -1,0 +1,2 @@
+oneflow==0.8.0+cu102
+flowvision==0.2.1

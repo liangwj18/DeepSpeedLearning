@@ -1,0 +1,10 @@
+BATCH_SIZE=32
+NUM_EPOCH=3
+
+# 空卡
+
+单机单卡：Training complete in: 62.0178
+单机双卡：Training complete in: 29.7873
+双机单卡：Training complete in: 3181.9983
+
+
