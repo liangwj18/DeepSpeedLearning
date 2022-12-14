@@ -1,13 +1,19 @@
 ### demo_tensorboard.py是一个单机单卡的例子，测试大作业的代码需要import torch.profiler ###
 ### 可以参考 https://blog.csdn.net/qq_44554428/article/details/123169430 ###
-### 如果收集的数据保存在path_dir，在shell中执行 tensorboard --logdir=path_dir --bind_all 建议用vscode，可以直接看到tensorboard的分析界面###
-### 需要在训练模型的前后和每一轮迭代分别加一段代码 ###
+### 如果收集的数据保存在path_dir，在shell中执行 tensorboard --logdir=path_dir --bind_all ### 
+### 如果服务器端口是6007，为了能在本地显示结果，需要在本地命令行执行如下命令 ###
+### ssh -N -f -L localhost:6007:localhost:6007 name@ip_server -o TCPKeepAlive=yes -o ServerAliveInterval=30 ###
+### 然后在本地浏览器打开localhost:6007即可显示结果 ###
+
+
+### 测数据，需要在训练模型的前后和每一轮迭代分别加一段代码 ###
 ### 如下所示 ###
 
 prof = torch.profiler.profile(
         schedule=torch.profiler.schedule(wait=1, warmup=1, active=5),   ### wait=1 不收集第1轮迭代的数据，warmup=1 收集第二轮数据但是不保存，active=5 保存接下来5轮的数据，循环
         on_trace_ready=torch.profiler.tensorboard_trace_handler('./log/resnet18'),  ### 将数据保存在'./log/resnet18'
         record_shapes=True,
+        profile_memory=True,
         with_stack=True)
 
 prof.start()  ### 从这里开始收集数据
@@ -21,4 +27,3 @@ for epoch in range(n):
  
  
  ### 我这里无法测试多机，但是按照在网上看到的一些结果，应该是同样的方法收集到多机的数据 ###
- ### 实在不行，就单独测多机中的每台机器，然后事后对比 ###
