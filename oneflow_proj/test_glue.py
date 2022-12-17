@@ -15,15 +15,15 @@
 """ Finetuning the library models for sequence classification on GLUE."""
 # You can also adapt this script on your own text classification task. Pointers for this are left as comments.
 
-import logging
 import os
-import random
 import sys
+import random
+import logging
 from dataclasses import dataclass, field
 from typing import Optional
-
 import numpy as np
 from datasets import load_dataset, load_metric
+from oneflow.nn.parallel import DistributedDataParallel as ddp
 
 import transformers
 from transformers import (
@@ -264,9 +264,9 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    model = ddp(model)
+    DEVICE="cuda"
+    # model = ddp(model.to(DEVICE))
     # print(model)
-
 
     # Preprocessing the datasets
     if data_args.task_name is not None:
@@ -368,6 +368,16 @@ def main():
     )
 
     # Training
+    INTERFACE = 'ens6f0'
+    def get_network_info():
+        ifstat = open('/proc/net/dev').readlines()
+        for interface in ifstat:
+            if INTERFACE in interface:
+                receive = float(interface.split()[1])
+                transmit = float(interface.split()[9])
+                return receive, transmit
+
+    beg_receive, beg_transmit = get_network_info()
     if training_args.do_train:
         train_result = trainer.train(
             model_path=model_args.model_name_or_path if os.path.isdir(model_args.model_name_or_path) else None
@@ -386,6 +396,8 @@ def main():
 
             # Need to save the state, since Trainer.save_model saves only the tokenizer with the model
             trainer.state.save_to_json(os.path.join(training_args.output_dir, "trainer_state.json"))
+    end_receive, end_transmit = get_network_info()
+    print(f"Total receive: {round((end_receive-beg_receive) / 1024 / 1024, 3)}MB, Total transmit: {round((end_transmit-beg_transmit) / 1024 / 1024, 3)}MB")
 
     # Evaluation
     eval_results = {}
@@ -424,7 +436,7 @@ def main():
 
         for test_dataset, task in zip(test_datasets, tasks):
             # Removing the `label` columns because it contains -1 and Trainer won't like that.
-            test_dataset.remove_columns_("label")
+            # test_dataset.remove_columns_("label")
             predictions = trainer.predict(test_dataset=test_dataset).predictions
             predictions = np.squeeze(predictions) if is_regression else np.argmax(predictions, axis=1)
 

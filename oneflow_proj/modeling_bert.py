@@ -15,6 +15,7 @@
 # limitations under the License.
 """PyTorch BERT model."""
 
+import oneflow as torch
 import oneflow.nn as nn
 from oneflow.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 from transformers.models.bert.modeling_bert import *

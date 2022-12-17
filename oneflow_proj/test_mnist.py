@@ -1,4 +1,5 @@
 import torch
+import argparse
 import oneflow as flow
 from datetime import datetime
 import oneflow.nn as nn
@@ -7,7 +8,6 @@ from flowvision import datasets
 from flowvision import transforms
 from oneflow.nn.parallel import DistributedDataParallel as ddp
 from utils import set_seed
-
 
 class ConvNet(nn.Module):
     def __init__(self, num_classes=10):
@@ -72,16 +72,29 @@ class ConvNet(nn.Module):
 #     print(f"Test Error: \n Accuracy: {(100 * correct):>0.1f}, Avg loss: {test_loss:>8f}")
 
 
+INTERFACE = 'ens6f0'
+def get_network_info():
+    ifstat = open('/proc/net/dev').readlines()
+    for interface in ifstat:
+        if INTERFACE in interface:
+            receive = float(interface.split()[1])
+            transmit = float(interface.split()[9])
+            return receive, transmit
+
 def print_info(content):
     if local_rank == 0:
         print(content)
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser("MNIST")
+    parser.add_argument("--bsz", type=str, default=64)
+    args = parser.parse_args()
+
     set_seed(42)
-    BATCH_SIZE = 100
-    NUM_EPOCH = 5
     DEVICE = "cuda"
+    NUM_EPOCH = 5
+    BATCH_SIZE = int(args.bsz)
 
     # Wrap the model
     model = ddp(ConvNet().to(DEVICE))
@@ -90,37 +103,15 @@ if __name__ == '__main__':
     rank = flow.env.get_rank()
     local_rank = flow.env.get_local_rank()
 
-    print(f"node_size: {node_size}, world_size: {world_size}, rank: {rank}, local_rank: {local_rank}")
-    # print(f"rank: {rank}")
+    print(f"node_size: {node_size}, world_size: {world_size}, rank: {rank}, local_rank: {local_rank}, bsz: {BATCH_SIZE}")
 
-    # Data loading code
-    # train_dataset = torchvision.datasets.MNIST(
-    #     root='./data',
-    #     train=True,
-    #     transform=transforms.ToTensor(),
-    #     download=True
-    # )
-    # train_sampler = torch.utils.data.distributed.DistributedSampler(
-    #     train_dataset,
-    #     num_replicas=args.world_size,
-    #     rank=rank
-    # )
-    # train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-    #                                            batch_size=batch_size,
-    #                                            shuffle=False,
-    #                                            num_workers=0,
-    #                                            pin_memory=True,
-    #                                            sampler=train_sampler)
-
-    training_data = datasets.FashionMNIST(
+    training_data = datasets.MNIST(
         root="data",
         train=True,
         transform=transforms.ToTensor(),
         download=True,
-        source_url="https://oneflow-public.oss-cn-beijing.aliyuncs.com/datasets/mnist/Fashion-MNIST/",
+        # source_url="https://oneflow-public.oss-cn-beijing.aliyuncs.com/datasets/mnist/Fashion-MNIST/",  # 30000
     )
-    # 30000
-
     train_sampler = flow.utils.data.distributed.DistributedSampler(
         training_data,
         num_replicas=world_size,
@@ -129,16 +120,23 @@ if __name__ == '__main__':
     train_dataloader = flow.utils.data.DataLoader(
         training_data, BATCH_SIZE, shuffle=False, sampler=train_sampler,
     )
-    # test_data = datasets.FashionMNIST(
-    #     root="data",
-    #     train=False,
-    #     transform=transforms.ToTensor(),
-    #     download=True,
-    #     source_url="https://oneflow-public.oss-cn-beijing.aliyuncs.com/datasets/mnist/Fashion-MNIST/",
-    # )
-    # test_dataloader = flow.utils.data.DataLoader(
-    #     test_data, BATCH_SIZE, shuffle=False
-    # )
+
+    test_data = datasets.MNIST(
+        root="data",
+        train=False,
+        transform=transforms.ToTensor(),
+        download=True,
+        # source_url="https://oneflow-public.oss-cn-beijing.aliyuncs.com/datasets/mnist/Fashion-MNIST/",
+    )
+    test_sampler = flow.utils.data.distributed.DistributedSampler(
+        test_data,
+        num_replicas=world_size,
+        rank=rank,
+    )
+    test_dataloader = flow.utils.data.DataLoader(
+        test_data, BATCH_SIZE, shuffle=False
+    )
+    print("training samples:", len(training_data))
     for x, y in train_dataloader:
         print_info(f"x.shape: {x.shape}, y.shape: {y.shape}")
         break
@@ -153,6 +151,8 @@ if __name__ == '__main__':
 
     # Data Parallel TODO
     # placement = flow.placement(type="cuda", ranks=[0, 1])
+
+    beg_receive, beg_transmit = get_network_info()
 
     for epoch in range(NUM_EPOCH):
         for i, (images, labels) in enumerate(train_dataloader):
@@ -174,3 +174,18 @@ if __name__ == '__main__':
                 print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
                       .format(epoch + 1, NUM_EPOCH, i + 1, total_step,loss.item()))
     print_info("Training complete in: " + str(datetime.now() - start))
+
+    end_receive, end_transmit = get_network_info()
+    print(f"Total receive: {round((end_receive-beg_receive) / 1024 / 1024, 3)}MB, Total transmit: {round((end_transmit-beg_transmit) / 1024 / 1024, 3)}MB")
+
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for data in test_dataloader:
+            images, labels = data
+            outputs = model(images.to(DEVICE))
+            _, predicted = flow.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels.to(DEVICE)).sum().item()
+
+    print('Accuracy of the network on the 10000 test images: {} %%'.format(100 * correct / total))

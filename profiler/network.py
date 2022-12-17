@@ -42,7 +42,13 @@ def tx():
             stat = float(interface.split()[9])
             STATS[1:] = [stat]
             return stat
-
+def get_network_info():
+    ifstat = open('/proc/net/dev').readlines()
+    for interface in ifstat:
+        if INTERFACE in interface:
+            receive = float(interface.split()[1])
+            transmit = float(interface.split()[9])
+            return receive, transmit
 
 print(f"""
 'In        Out'
